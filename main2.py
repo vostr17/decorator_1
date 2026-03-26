@@ -1,32 +1,37 @@
 from datetime import datetime
+import functools
 import os
 
-
-"""Декоратор logger"""
-def logger(old_function):
-    def wrapper(*args, **kwargs):
-        log_string = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} была вызвана функция {old_function.__name__} с аргументами {args=}, {kwargs=};"
-        result = old_function(*args, **kwargs)
-        log_string += f' результат вызова функции: {result=}.'
-        with open('main.log', 'a', encoding='utf-8') as file:
-            file.write(log_string + '\n')
-        return result
-
-    return wrapper
-
-"""Декоратор logger c параметром"""
-def logger1(path: str):
-    def __logger(old_function):
+"""Универсальный декоратор (для использования с параметром или без)"""
+def logger(arg=None):
+    # Если первый аргумент является функцией, то декоратор был вызван без параметров
+    if callable(arg):
+        func = arg
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            log_string = f'{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} была вызвана функция {old_function.__name__} с аргументами {args=}, {kwargs=};'
-            result = old_function(*args, **kwargs)
-            log_string += f' результат вызова функции: {result=}.'
-            with open(path, 'a', encoding='utf-8') as file:
+            log_string = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} была вызвана функция {func.__name__} с аргументами {args=}, {kwargs=};"
+            result = func(*args, **kwargs)
+            log_string += f' результат вызова функции {result=}.'
+            with open('main.log', 'a', encoding='utf-8') as file:
                 file.write(log_string + '\n')
             return result
-
         return wrapper
-    return __logger
+    else:
+        # Если первый аргумент НЕ функция, значит, декоратор был вызван с параметрами.
+        def decorator(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                path = arg
+                log_string = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} была вызвана функция {func.__name__} с аргументами {args=}, {kwargs=};"
+                result = func(*args, **kwargs)
+                log_string += f' результат вызова функции {result=}.'
+                with open(path, 'a', encoding='utf-8') as file:
+                    file.write(log_string + '\n')
+
+                return result
+            return wrapper
+        return decorator
+
 
 """Тестирование декоратора logger без параметров"""
 def test_1():
@@ -73,15 +78,15 @@ def test_2():
         if os.path.exists(path):
             os.remove(path)
 
-        @logger1(path)
+        @logger(path)
         def hello_world():
             return 'Hello World'
 
-        @logger1(path)
+        @logger(path)
         def summator(a, b=0):
             return a + b
 
-        @logger1(path)
+        @logger(path)
         def div(a, b):
             return a / b
 
